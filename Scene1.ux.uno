@@ -14,17 +14,9 @@ public partial class Scene1
 		device = new Rocket.ClientDevice();
 		device.SetRowEvent += OnSetRow;
 		device.TogglePauseEvent += OnTogglePause;
+		device.Connect("localhost", 1338);
+		testTrack = device.GetTrack("testTrack");
 
-		Uno.Diagnostics.Debug.Log("calling Connect:");
-		bool result = device.Connect("localhost", 1338);
-		Uno.Diagnostics.Debug.Log("result: " + result);
-
-		Uno.Diagnostics.Debug.Log("calling GetTrack:");
-		var testTrack = device.GetTrack("testTrack");
-		Uno.Diagnostics.Debug.Log("result: " + testTrack);
-
-		/*var t = new Track();
-		t.GetValue(0); */
         InitializeUX();
     }
 
@@ -32,12 +24,13 @@ public partial class Scene1
 	{
 		base.OnUpdate();
 		if (device != null)
-			device.Update();
+			device.Update(row);
+		Uno.Diagnostics.Debug.Log("value: " + testTrack.GetValue((float)row));
 	}
 
 	public void OnSetRow(object sender, int row)
 	{
-		Uno.Diagnostics.Debug.Log("row: " + row);
+		this.row = row;
 	}
 
 	public void OnTogglePause(object sender, bool pause)
@@ -46,4 +39,6 @@ public partial class Scene1
 	}
 
 	Rocket.ClientDevice device = null;
+	int row = 0;
+	Rocket.Track testTrack = null;
 }

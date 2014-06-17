@@ -33,8 +33,8 @@ namespace Rocket
 			if (idx > keyFrames.Count - 2)
 				return keyFrames[keyFrames.Count - 1].val;
 
-			float t = (row - keyFrames[idx].row) / (keyFrames[idx + 1].row / keyFrames[idx].row);
-			return keyFrames[idx].val + (keyFrames[idx + 1].row - keyFrames[idx].row) * t;
+			float t = (row - keyFrames[idx].row) / (float)(keyFrames[idx + 1].row - keyFrames[idx].row);
+			return keyFrames[idx].val + (keyFrames[idx + 1].val - keyFrames[idx].val) * t;
 		}
 
 		int FindKey(int row)
@@ -140,7 +140,83 @@ namespace Rocket
 			return track;
 		}
 
-		public bool Update()
+		private bool HandleSetKeyCmd()
+		{
+			byte[] payload = new byte[4];
+
+			// HACK! no error checking!
+			socket.Receive(payload, payload.Length);
+			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+
+			// HACK! no error checking!
+			socket.Receive(payload, payload.Length);
+			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+
+			// HACK! no error checking!
+			socket.Receive(payload, payload.Length);
+
+			// YUCK! stitch together FP32!
+			int significand = ((payload[3] | (payload[2] << 8) | (payload[1] << 16)) & ((1 << 23) - 1));
+			int exponent = (((payload[0] & 0x7f) << 1) | (payload[1] >> 7)) - 127;
+			if (exponent != -127)
+				significand |= 1 << 23;
+			float val = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
+			if ((payload[0] & 0x80) != 0)
+				val = - val;
+
+			// HACK! no error checking!
+			socket.Receive(payload, 1);
+			int iterpolation = payload[0];
+
+			Uno.Diagnostics.Debug.Log("track: " + track);
+			Uno.Diagnostics.Debug.Log("row: " + row);
+			Uno.Diagnostics.Debug.Log("val: " + val);
+			Uno.Diagnostics.Debug.Log("interpolation: " + iterpolation);
+
+			tracks[track].SetKey(row, val);
+			return true;
+		}
+
+		private bool HandleDelKeyCmd()
+		{
+			byte[] payload = new byte[4];
+
+			// HACK! no error checking!
+			socket.Receive(payload, payload.Length);
+			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+
+			// HACK! no error checking!
+			socket.Receive(payload, payload.Length);
+			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+
+			Uno.Diagnostics.Debug.Log("track: " + track);
+			Uno.Diagnostics.Debug.Log("row: " + row);
+
+			tracks[track].DelKey(row);
+			return true;
+		}
+
+		private bool HandleSetRowCmd()
+		{
+			byte[] payload = new byte[4];
+			socket.Receive(payload, payload.Length);
+			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+			if (SetRowEvent != null)
+				SetRowEvent(this, row);
+			return true;
+		}
+
+		private bool HandlePauseCmd()
+		{
+			byte[] payload = new byte[1];
+			socket.Receive(payload, 1);
+			bool pause = payload[0] != 0;
+			if (TogglePauseEvent != null)
+				TogglePauseEvent(this, pause);
+			return true;
+		}
+
+		public bool Update(int row)
 		{
 			if (socket == null)
 				return false;
@@ -150,80 +226,29 @@ namespace Rocket
 				socket.Receive(cmd, 1);
 
 				switch (cmd[0]) {
-				case 0: // set key
-
-					byte[] payload = new byte[4];
-
-					// HACK! no error checking!
-					socket.Receive(payload, payload.Length);
-					int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-					// HACK! no error checking!
-					socket.Receive(payload, payload.Length);
-					int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-					// HACK! no error checking!
-					socket.Receive(payload, payload.Length);
-
-					// YUCK! stitch together FP32!
-					int significand = ((payload[3] | (payload[2] << 8) | (payload[1] << 16)) & ((1 << 23) - 1));
-					int exponent = (((payload[0] & 0x7f) << 1) | (payload[1] >> 7)) - 127;
-					if (exponent != -127)
-						significand |= 1 << 23;
-					float val = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
-					if ((payload[0] & 0x80) != 0)
-						val = - val;
-
-					// HACK! no error checking!
-					socket.Receive(payload, 1);
-					int iterpolation = payload[0];
-
-					Uno.Diagnostics.Debug.Log("track: " + track);
-					Uno.Diagnostics.Debug.Log("row: " + row);
-					Uno.Diagnostics.Debug.Log("val: " + val);
-					Uno.Diagnostics.Debug.Log("interpolation: " + iterpolation);
-
-					tracks[track].SetKey(row, val);
-					break;
-
-				case 1: // del key
-					byte[] payload = new byte[4];
-
-					// HACK! no error checking!
-					socket.Receive(payload, payload.Length);
-					int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-					// HACK! no error checking!
-					socket.Receive(payload, payload.Length);
-					int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-					Uno.Diagnostics.Debug.Log("track: " + track);
-					Uno.Diagnostics.Debug.Log("row: " + row);
-
-					tracks[track].DelKey(row);
-					break;
-
-				case 3: // set row
-					byte[] payload = new byte[4];
-					socket.Receive(payload, payload.Length);
-					int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-					if (SetRowEvent != null)
-						SetRowEvent(this, row);
-					// TODO: callback!
-					break;
-
-				case 4: // pause
-					byte[] payload = new byte[1];
-					socket.Receive(payload, 1);
-					bool pause = payload[0] != 0;
-					if (TogglePauseEvent != null)
-						TogglePauseEvent(this, pause);
-					break;
-
+				case 0: HandleSetKeyCmd(); break;
+				case 1: HandleDelKeyCmd(); break;
+				case 3: HandleSetRowCmd(); break;
+				case 4: HandlePauseCmd(); break;
 				case 5: // save tracks
 					// HACK: not implemented!
 					break;
 				}
+			}
+
+			if (IsPlayingEvent != null && IsPlayingEvent(this)) {
+				byte[] output = new byte[5];
+
+				output[0] = 3; // set row
+
+				output[1] = (byte)((row >> 24) & 0xff);
+				output[2] = (byte)((row >> 16) & 0xff);
+				output[3] = (byte)((row >> 8) & 0xff);
+				output[4] = (byte)(row & 0xff);
+
+				// disconnect on error
+				if (!socket.Send(output, output.Length))
+					socket = null;
 			}
 
 			return true;
@@ -237,6 +262,9 @@ namespace Rocket
 
 		public delegate void TogglePauseEventHandler(object sender, bool pause);
 		public event TogglePauseEventHandler TogglePauseEvent;
+
+		public delegate bool IsPlayingEventHandler(object sender);
+		public event IsPlayingEventHandler IsPlayingEvent;
 
 	}
 }
