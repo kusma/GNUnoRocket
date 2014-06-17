@@ -19,21 +19,34 @@ namespace Rocket
 		{
 			public int row;
 			public float val;
+			public int interpolation;
 		}
 
 		public float GetValue(float time)
 		{
+			if (keyFrames.Count == 0)
+				return 0.0f;
+
 			int row = (int)Math.Floor(time);
 			int idx = FindKey(row);
+
 			if (idx < 0)
 				idx = -idx - 2;
 
 			if (idx < 0)
 				return keyFrames[0].val;
-			if (idx > keyFrames.Count - 2)
+			if (idx >= keyFrames.Count - 1)
 				return keyFrames[keyFrames.Count - 1].val;
 
 			float t = (row - keyFrames[idx].row) / (float)(keyFrames[idx + 1].row - keyFrames[idx].row);
+
+			switch (keyFrames[idx].interpolation) {
+			case 0: t = 0; break;
+			case 1: break;
+			case 2: t = t * t * (3 - 2 * t); break;
+			case 3: t *= t; break;
+			}
+
 			return keyFrames[idx].val + (keyFrames[idx + 1].val - keyFrames[idx].val) * t;
 		}
 
@@ -59,11 +72,12 @@ namespace Rocket
 			return -lo - 1;
 		}
 
-		public void SetKey(int row, float val)
+		public void SetKey(int row, float val, int interpolation)
 		{
 			var key = new KeyFrame();
 			key.row = row;
 			key.val = val;
+			key.interpolation = interpolation;
 			int idx = FindKey(row);
 			if (idx < 0)
 				keyFrames.Insert(-idx - 1, key);
@@ -166,14 +180,14 @@ namespace Rocket
 
 			// HACK! no error checking!
 			socket.Receive(payload, 1);
-			int iterpolation = payload[0];
+			int interpolation = payload[0];
 
 			Uno.Diagnostics.Debug.Log("track: " + track);
 			Uno.Diagnostics.Debug.Log("row: " + row);
 			Uno.Diagnostics.Debug.Log("val: " + val);
-			Uno.Diagnostics.Debug.Log("interpolation: " + iterpolation);
+			Uno.Diagnostics.Debug.Log("interpolation: " + interpolation);
 
-			tracks[track].SetKey(row, val);
+			tracks[track].SetKey(row, val, interpolation);
 			return true;
 		}
 
