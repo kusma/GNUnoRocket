@@ -34,7 +34,7 @@
     </Entity>
   </owf:WowFactory>
   <Entity ux:Binding="Camera" ux:Name="Camera1">
-    <Transform Position="138.8343, 74.47594, 27.1522" RotationDegrees="325.3235, 81.43486, 95.0309" Scaling="1, 1, 1" />
+    <Transform Position="138.8343, 74.47594, 27.1522" RotationDegrees="337.9343, 93.84655, 88.68545" Scaling="1, 1, 1" />
     <Frustum FovDegrees="45" Aspect="1" ZNear="10" ZFar="5000" />
   </Entity>
   <Style ux:Name="Style1" ux:StaticRef="Uno.UI.DefaultStyle.Style" />

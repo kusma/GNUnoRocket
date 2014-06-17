@@ -1,2 +1,3 @@
-<ExportBindings TargetBackend="CSharp">
+<ExportBindings TargetBackend="CIL">
+	<TargetElement Type="AssemblyReference" Value="SocketWrapper.dll" />
 </ExportBindings>
