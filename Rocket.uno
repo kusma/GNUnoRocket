@@ -149,12 +149,9 @@ namespace Rocket
 					}
 
 					ret.Add((byte)(byteMark | (ch >> (6 * trailingBytes)) & 0x7f));
-					Uno.Diagnostics.Debug.Log(ret[ret.Count - 1]);
 
-					for (int j = 0; j < trailingBytes; ++j) {
+					for (int j = 0; j < trailingBytes; ++j)
 						ret.Add((byte)(0x80 | (ch >> (6 * (trailingBytes - 1 - j))) & 0xbf));
-						Uno.Diagnostics.Debug.Log(ret[ret.Count - 1]);
-					}
 				}
 				return ret.ToArray();
 			}
