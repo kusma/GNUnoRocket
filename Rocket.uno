@@ -133,7 +133,19 @@ namespace Rocket
 				for (int i = 0; i < str.Length; ++i) {
 					int ch = str[i];
 
-					// HACK: ignore surrogate pairs
+					if (ch >= 0xd800 && ch <= 0xdbff) {
+						int ch1 = ch;
+						ch = 0xfffd;
+						if (i + 1 != str.Length) {
+							int ch2 = str[++i];
+							if (ch2 >= 0xdc00 && ch2 < 0xdfff) {
+								ch2 &= 0x3ff;
+								ch2 |= (ch & 0x3ff) << 10;
+								if (ch2 <= 0x10ffff)
+									ch = ch2;
+							}
+						}
+					}
 
 					int trailingBytes = 0;
 					byte byteMark = 0x00;
