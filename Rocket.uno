@@ -125,6 +125,40 @@ namespace Rocket
 				return ret;
 			}
 		}
+
+		public class UTF8 {
+			public static byte[] GetBytes(string str)
+			{
+				var ret = new List<byte>();
+				for (int i = 0; i < str.Length; ++i) {
+					int ch = str[i];
+
+					// HACK: ignore surrogate pairs
+
+					int trailingBytes = 0;
+					byte byteMark = 0x00;
+					if (ch >= 0x80) {
+						trailingBytes = 1;
+						byteMark = 0xC0;
+					} else if (ch >= 0x800) {
+						trailingBytes = 2;
+						byteMark = 0xE0;
+					} else if (ch >= 0x10000) {
+						trailingBytes = 3;
+						byteMark = 0xF0;
+					}
+
+					ret.Add((byte)(byteMark | (ch >> (6 * trailingBytes)) & 0x7f));
+					Uno.Diagnostics.Debug.Log(ret[ret.Count - 1]);
+
+					for (int j = 0; j < trailingBytes; ++j) {
+						ret.Add((byte)(0x80 | (ch >> (6 * (trailingBytes - 1 - j))) & 0xbf));
+						Uno.Diagnostics.Debug.Log(ret[ret.Count - 1]);
+					}
+				}
+				return ret.ToArray();
+			}
+		}
 	}
 
 	[ExportCondition("CIL")]
@@ -165,19 +199,20 @@ namespace Rocket
 			var track = new Track(name);
 			tracks.Add(track);
 
-			byte[] output = new byte[5 + name.Length];
+			var nameUTF8 = Encoding.UTF8.GetBytes(name);
+			var output = new byte[5 + nameUTF8.Length];
 
 			// "get track"
 			output[0] = 2;
 
-			output[1] = (byte)((name.Length >> 24) & 0xff);
-			output[2] = (byte)((name.Length >> 16) & 0xff);
-			output[3] = (byte)((name.Length >> 8) & 0xff);
-			output[4] = (byte)(name.Length & 0xff);
+			output[1] = (byte)((nameUTF8.Length >> 24) & 0xff);
+			output[2] = (byte)((nameUTF8.Length >> 16) & 0xff);
+			output[3] = (byte)((nameUTF8.Length >> 8) & 0xff);
+			output[4] = (byte)(nameUTF8.Length & 0xff);
 
-			for (int i = 0; i < name.Length; ++i) {
+			for (int i = 0; i < nameUTF8.Length; ++i) {
 				assert(i < output.Length);
-				output[5 + i] = (byte)name[i]; // HACK: only ASCII supported!
+				output[5 + i] = (byte)nameUTF8[i];
 			}
 
 			// disconnect on error
