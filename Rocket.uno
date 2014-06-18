@@ -137,15 +137,15 @@ namespace Rocket
 
 					int trailingBytes = 0;
 					byte byteMark = 0x00;
-					if (ch >= 0x80) {
-						trailingBytes = 1;
-						byteMark = 0xC0;
+					if (ch >= 0x10000) {
+						trailingBytes = 3;
+						byteMark = 0xF0;
 					} else if (ch >= 0x800) {
 						trailingBytes = 2;
 						byteMark = 0xE0;
-					} else if (ch >= 0x10000) {
-						trailingBytes = 3;
-						byteMark = 0xF0;
+					} else if (ch >= 0x80) {
+						trailingBytes = 1;
+						byteMark = 0xC0;
 					}
 
 					ret.Add((byte)(byteMark | (ch >> (6 * trailingBytes)) & 0x7f));
