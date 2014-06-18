@@ -182,7 +182,7 @@ namespace Rocket
 
 			// disconnect on error
 			if (!socket.Send(output, output.Length))
-				socket = null;
+				socket.Disconnect();
 
 			return track;
 		}
@@ -210,7 +210,6 @@ namespace Rocket
 			if ((payload[0] & 0x80) != 0)
 				val = - val;
 
-			// HACK! no error checking!
 			if (!socket.Receive(payload, 1))
 				return false;
 			int interpolation = payload[0];
@@ -258,27 +257,53 @@ namespace Rocket
 			return true;
 		}
 
+		private bool HandleSaveTracksCmd()
+		{
+			// TODO: implement
+			return true;
+		}
+
 		public bool Update(int row)
 		{
-			if (socket == null)
+			if (!socket.IsConnected())
 				return false;
 
 			while (socket.PollData()) {
 				byte[] cmd = new byte[1];
-				socket.Receive(cmd, 1);
+				if (!socket.Receive(cmd, 1)) {
+					socket.Disconnect();
+					break;
+				}
 
 				switch (cmd[0]) {
-				case 0: HandleSetKeyCmd(); break;
-				case 1: HandleDelKeyCmd(); break;
-				case 3: HandleSetRowCmd(); break;
-				case 4: HandlePauseCmd(); break;
-				case 5: // save tracks
-					// HACK: not implemented!
+				case 0:
+					if (!HandleSetKeyCmd())
+						socket.Disconnect();
+					break;
+
+				case 1:
+					if (!HandleDelKeyCmd())
+						socket.Disconnect();
+					break;
+
+				case 3:
+					if (!HandleSetRowCmd())
+						socket.Disconnect();
+					break;
+
+				case 4:
+					if (!HandlePauseCmd())
+						socket.Disconnect();
+					break;
+
+				case 5:
+					if (!HandleSaveTracksCmd())
+						socket.Disconnect();
 					break;
 				}
 			}
 
-			if (IsPlayingEvent != null && IsPlayingEvent(this)) {
+			if (socket.IsConnected() && IsPlayingEvent != null && IsPlayingEvent(this)) {
 				byte[] output = new byte[5];
 
 				output[0] = 3; // set row
@@ -290,10 +315,10 @@ namespace Rocket
 
 				// disconnect on error
 				if (!socket.Send(output, output.Length))
-					socket = null;
+					socket.Disconnect();
 			}
 
-			return true;
+			return socket.IsConnected();
 		}
 
 		Socket socket = null;
