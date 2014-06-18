@@ -15,7 +15,6 @@ public partial class Scene1
 		device.SetRowEvent += OnSetRow;
 		device.TogglePauseEvent += OnTogglePause;
 		device.Connect("localhost", 1338);
-		testTrack = device.GetTrack("testTrack");
 
 		testTrackX = device.GetTrack("testTrackX");
 		testTrackY = device.GetTrack("testTrackY");
@@ -33,7 +32,6 @@ public partial class Scene1
 		if (device != null)
 			device.Update((int)Math.Floor(row));
 
-		Uno.Diagnostics.Debug.Log("value: " + testTrack.GetValue(time));
 		Transform3.Position = float3(testTrackX.GetValue(time),
 		                             testTrackY.GetValue(time),
 		                             testTrackZ.GetValue(time));
@@ -51,7 +49,6 @@ public partial class Scene1
 
 	Rocket.ClientDevice device = null;
 	int row = 0;
-	Rocket.Track testTrack = null;
 	Rocket.Track testTrackX = null;
 	Rocket.Track testTrackY = null;
 	Rocket.Track testTrackZ = null;

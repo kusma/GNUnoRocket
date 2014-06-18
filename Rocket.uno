@@ -100,9 +100,31 @@ namespace Rocket
 	public class Socket
 	{
 		public extern bool Connect(string host, int port);
+		public extern void Disconnect();
+		public extern bool IsConnected();
 		public extern bool PollData();
 		public extern bool Send(byte[] data, int size);
 		public extern bool Receive(byte[] data, int size);
+	}
+
+	class Encoding {
+		public class ASCII {
+			public static byte[] GetBytes(string str)
+			{
+				var ret = new byte[str.Length];
+				for (int i = 0; i < str.Length; ++i)
+					ret[i] = (byte)(str[i] < 128 ? str[i] : '?');
+				return ret;
+			}
+
+			public static string GetString(byte[] bytes)
+			{
+				var ret = "";
+				for (int i = 0; i < bytes.Length; ++i)
+					ret += bytes[i] < 128 ? (char)bytes[i] : '?';
+				return ret;
+			}
+		}
 	}
 
 	[ExportCondition("CIL")]
@@ -114,6 +136,17 @@ namespace Rocket
 
 			socket = new Socket();
 			if (socket.Connect(host, port)) {
+                byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
+                string serverGreet = "hello, demo!";
+                byte[] bytesReceived = new Byte[serverGreet.Length];
+
+                if (!socket.Send(clientGreet, clientGreet.Length) ||
+                    !socket.Receive(bytesReceived, bytesReceived.Length) ||
+                    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
+                {
+                    return false;
+                }
+
 				foreach (Track track in tracks)
 					GetTrack(track.name);
 				return true;
@@ -158,17 +191,16 @@ namespace Rocket
 		{
 			byte[] payload = new byte[4];
 
-			// HACK! no error checking!
-			socket.Receive(payload, payload.Length);
+			if (!socket.Receive(payload, payload.Length))
+				return false;
 			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			// HACK! no error checking!
-			socket.Receive(payload, payload.Length);
+			if (!socket.Receive(payload, payload.Length))
+				return false;
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			// HACK! no error checking!
-			socket.Receive(payload, payload.Length);
-
+			if (!socket.Receive(payload, payload.Length))
+				return false;
 			// YUCK! stitch together FP32!
 			int significand = ((payload[3] | (payload[2] << 8) | (payload[1] << 16)) & ((1 << 23) - 1));
 			int exponent = (((payload[0] & 0x7f) << 1) | (payload[1] >> 7)) - 127;
@@ -179,13 +211,9 @@ namespace Rocket
 				val = - val;
 
 			// HACK! no error checking!
-			socket.Receive(payload, 1);
+			if (!socket.Receive(payload, 1))
+				return false;
 			int interpolation = payload[0];
-
-			Uno.Diagnostics.Debug.Log("track: " + track);
-			Uno.Diagnostics.Debug.Log("row: " + row);
-			Uno.Diagnostics.Debug.Log("val: " + val);
-			Uno.Diagnostics.Debug.Log("interpolation: " + interpolation);
 
 			tracks[track].SetKey(row, val, interpolation);
 			return true;
@@ -195,16 +223,13 @@ namespace Rocket
 		{
 			byte[] payload = new byte[4];
 
-			// HACK! no error checking!
-			socket.Receive(payload, payload.Length);
+			if (!socket.Receive(payload, payload.Length))
+				return false;
 			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			// HACK! no error checking!
-			socket.Receive(payload, payload.Length);
+			if (!socket.Receive(payload, payload.Length))
+				return false;
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-			Uno.Diagnostics.Debug.Log("track: " + track);
-			Uno.Diagnostics.Debug.Log("row: " + row);
 
 			tracks[track].DelKey(row);
 			return true;
@@ -213,7 +238,9 @@ namespace Rocket
 		private bool HandleSetRowCmd()
 		{
 			byte[] payload = new byte[4];
-			socket.Receive(payload, payload.Length);
+			if (!socket.Receive(payload, payload.Length))
+				return false;
+
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 			if (SetRowEvent != null)
 				SetRowEvent(this, row);
@@ -223,7 +250,8 @@ namespace Rocket
 		private bool HandlePauseCmd()
 		{
 			byte[] payload = new byte[1];
-			socket.Receive(payload, 1);
+			if (!socket.Receive(payload, 1))
+				return false;
 			bool pause = payload[0] != 0;
 			if (TogglePauseEvent != null)
 				TogglePauseEvent(this, pause);

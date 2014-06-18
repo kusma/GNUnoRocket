@@ -11,28 +11,28 @@ namespace Rocket
         public bool Connect(string host, int port)
         {
             IPHostEntry hostEntry = Dns.GetHostEntry(host);
-            foreach (IPAddress address in hostEntry.AddressList) {
+            foreach (IPAddress address in hostEntry.AddressList)
+            {
                 IPEndPoint ipe = new IPEndPoint(address, port);
                 System.Net.Sockets.Socket tempSocket = new System.Net.Sockets.Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
                 tempSocket.Connect(ipe);
-                if (tempSocket.Connected) {
-
-                    Byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
-                    string serverGreet = "hello, demo!";
-                    Byte[] bytesReceived = new Byte[serverGreet.Length];
-
-                    if (tempSocket.Send(clientGreet, clientGreet.Length, SocketFlags.None) != clientGreet.Length ||
-                        tempSocket.Receive(bytesReceived, bytesReceived.Length, SocketFlags.None) != bytesReceived.Length ||
-                        !System.Text.Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
-                    {
-                        return false;
-                    }
-
+                if (tempSocket.Connected)
+                {
                     socket = tempSocket;
                     return true;
                 }
             }
             return false;
+        }
+
+        public void Disconnect()
+        {
+            socket.Disconnect(true);
+        }
+
+        public bool IsConnected()
+        {
+            return socket.Connected;
         }
 
         public bool PollData()
