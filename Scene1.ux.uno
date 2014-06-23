@@ -14,11 +14,19 @@ public partial class Scene1
 		device = new Rocket.ClientDevice();
 		device.SetRowEvent += OnSetRow;
 		device.TogglePauseEvent += OnTogglePause;
-		device.Connect("localhost", 1338);
 
-		testTrackX = device.GetTrack("testTrackX");
-		testTrackY = device.GetTrack("testTrackY");
-		testTrackZ = device.GetTrack("testTrackZ");
+		try
+		{
+			device.Connect("localhost", 1338);
+			testTrackX = device.GetTrack("testTrackX");
+			testTrackY = device.GetTrack("testTrackY");
+			testTrackZ = device.GetTrack("testTrackZ");
+		}
+		catch (Exception e)
+		{
+			Uno.Diagnostics.Debug.Log("failed to connect to editor: " + e.Message);
+			throw e;
+		}
 
         InitializeUX();
     }

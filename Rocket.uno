@@ -99,7 +99,7 @@ namespace Rocket
 	[ExportCondition("CIL")]
 	public class Socket
 	{
-		public extern bool Connect(string host, int port);
+		public extern void Connect(string host, int port);
 		public extern void Disconnect();
 		public extern bool IsConnected();
 		public extern bool PollData();
@@ -173,32 +173,34 @@ namespace Rocket
 	[ExportCondition("CIL")]
 	public class ClientDevice
 	{
-		public bool Connect(string host, int port)
+		public void Connect(string host, int port)
 		{
 			assert(socket == null);
+			var temp = new Socket();
 
-			socket = new Socket();
-			if (socket.Connect(host, port)) {
-                byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
-                string serverGreet = "hello, demo!";
-                byte[] bytesReceived = new Byte[serverGreet.Length];
+			temp.Connect(host, port);
+			byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
+			string serverGreet = "hello, demo!";
+			byte[] bytesReceived = new Byte[serverGreet.Length];
 
-                if (!socket.Send(clientGreet, clientGreet.Length) ||
-                    !socket.Receive(bytesReceived, bytesReceived.Length) ||
-                    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
-                {
-                    return false;
-                }
-
-				foreach (Track track in tracks)
-					GetTrack(track.name);
-				return true;
+			if (!temp.Send(clientGreet, clientGreet.Length) ||
+			    !temp.Receive(bytesReceived, bytesReceived.Length) ||
+			    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
+			{
+				throw new Exception("handshake-error!");
 			}
-			return false;
+
+			socket = temp;
+
+			foreach (Track track in tracks)
+				GetTrack(track.name);
 		}
 
 		public Track GetTrack(string name)
 		{
+			if (socket != null)
+				throw new Exception("not connected!");
+
 			foreach (Track t in tracks) {
 				if (t.name.Equals(name)) {
 					return t;
@@ -309,7 +311,7 @@ namespace Rocket
 
 		public bool Update(int row)
 		{
-			if (!socket.IsConnected())
+			if (socket == null || !socket.IsConnected())
 				return false;
 
 			while (socket.PollData()) {

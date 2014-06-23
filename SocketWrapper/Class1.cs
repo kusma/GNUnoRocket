@@ -8,21 +8,10 @@ namespace Rocket
 {
     public class Socket
     {
-        public bool Connect(string host, int port)
+        public void Connect(string host, int port)
         {
-            IPHostEntry hostEntry = Dns.GetHostEntry(host);
-            foreach (IPAddress address in hostEntry.AddressList)
-            {
-                IPEndPoint ipe = new IPEndPoint(address, port);
-                System.Net.Sockets.Socket tempSocket = new System.Net.Sockets.Socket(ipe.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-                tempSocket.Connect(ipe);
-                if (tempSocket.Connected)
-                {
-                    socket = tempSocket;
-                    return true;
-                }
-            }
-            return false;
+            System.Net.Sockets.Socket tempSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            tempSocket.Connect(host, port);
         }
 
         public void Disconnect()
@@ -32,7 +21,7 @@ namespace Rocket
 
         public bool IsConnected()
         {
-            return socket.Connected;
+            return socket != null && socket.Connected;
         }
 
         public bool PollData()
