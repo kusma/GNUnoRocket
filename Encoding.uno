@@ -36,7 +36,7 @@ public abstract class Encoding
 						int ch2 = str[++i];
 						if (ch2 >= 0xdc00 && ch2 < 0xdfff) {
 							ch2 &= 0x3ff;
-							ch2 |= (ch & 0x3ff) << 10;
+							ch2 |= (ch1 & 0x3ff) << 10;
 							if (ch2 <= 0x10ffff)
 								ch = ch2;
 						}
