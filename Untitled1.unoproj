@@ -13,6 +13,7 @@
     <UxFile Path="Scene1.ux" />
     <SourceFile Path="Scene1.ux.uno" />
     <SourceFile Path="Rocket.uno" />
+    <SourceFile Path="Encoding.uno" />
     <ExtensionFile Path="Rocket.uxl" />
     <StartupFile Path="Scene1.ux" />
   </Files>
