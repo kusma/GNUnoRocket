@@ -99,6 +99,7 @@ namespace Rocket
 	[ExportCondition("CIL")]
 	public class Socket
 	{
+		public extern Socket();
 		public extern void Connect(string host, int port);
 		public extern void Disconnect();
 		public extern bool IsConnected();
@@ -112,30 +113,34 @@ namespace Rocket
 	{
 		public void Connect(string host, int port)
 		{
-			assert(socket == null);
-			var temp = new Socket();
+			socket.Connect(host, port);
 
-			temp.Connect(host, port);
-			byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
-			string serverGreet = "hello, demo!";
-			byte[] bytesReceived = new Byte[serverGreet.Length];
-
-			if (!temp.Send(clientGreet, clientGreet.Length) ||
-			    !temp.Receive(bytesReceived, bytesReceived.Length) ||
-			    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
+			try
 			{
-				throw new Exception("handshake-error!");
+				byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
+				string serverGreet = "hello, demo!";
+				byte[] bytesReceived = new Byte[serverGreet.Length];
+
+				if (!socket.Send(clientGreet, clientGreet.Length) ||
+				    !socket.Receive(bytesReceived, bytesReceived.Length) ||
+				    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
+				{
+					throw new Exception("handshake-error!");
+				}
+
+				foreach (Track track in tracks)
+					GetTrack(track.name);
 			}
-
-			socket = temp;
-
-			foreach (Track track in tracks)
-				GetTrack(track.name);
+			catch (Exception e)
+			{
+				socket.Disconnect();
+				throw e;
+			}
 		}
 
 		public Track GetTrack(string name)
 		{
-			if (socket == null)
+			if (!socket.IsConnected())
 				throw new Exception("not connected!");
 
 			foreach (Track t in tracks) {
@@ -248,7 +253,7 @@ namespace Rocket
 
 		public bool Update(int row)
 		{
-			if (socket == null || !socket.IsConnected())
+			if (!socket.IsConnected())
 				return false;
 
 			while (socket.PollData()) {
@@ -304,7 +309,7 @@ namespace Rocket
 			return socket.IsConnected();
 		}
 
-		Socket socket = null;
+		Socket socket = new Socket();
 		List<Track> tracks = new List<Track>();
 
 		public delegate void SetRowEventHandler(object sender, int row);

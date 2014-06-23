@@ -8,11 +8,14 @@ namespace Rocket
 {
     public class Socket
     {
+        public Socket()
+        {
+            socket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        }
+
         public void Connect(string host, int port)
         {
-            System.Net.Sockets.Socket tempSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            tempSocket.Connect(host, port);
-            socket = tempSocket;
+            socket.Connect(host, port);
         }
 
         public void Disconnect()
