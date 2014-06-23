@@ -12,6 +12,7 @@ namespace Rocket
         {
             System.Net.Sockets.Socket tempSocket = new System.Net.Sockets.Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             tempSocket.Connect(host, port);
+            socket = tempSocket;
         }
 
         public void Disconnect()

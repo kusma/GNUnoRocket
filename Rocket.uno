@@ -198,7 +198,7 @@ namespace Rocket
 
 		public Track GetTrack(string name)
 		{
-			if (socket != null)
+			if (socket == null)
 				throw new Exception("not connected!");
 
 			foreach (Track t in tracks) {
