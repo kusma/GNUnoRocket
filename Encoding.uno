@@ -64,13 +64,13 @@ namespace Text
 				byte byteMark = 0x00;
 				if (ch >= 0x10000) {
 					trailingBytes = 3;
-					byteMark = 0xF0;
+					byteMark = 0xf0;
 				} else if (ch >= 0x800) {
 					trailingBytes = 2;
-					byteMark = 0xE0;
+					byteMark = 0xe0;
 				} else if (ch >= 0x80) {
 					trailingBytes = 1;
-					byteMark = 0xC0;
+					byteMark = 0xc0;
 				}
 
 				ret.Add((byte)(byteMark | (ch >> (6 * trailingBytes)) & 0x7f));
