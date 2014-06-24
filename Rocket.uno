@@ -117,13 +117,13 @@ namespace Rocket
 
 			try
 			{
-				byte[] clientGreet = Encoding.ASCII.GetBytes("hello, synctracker!");
+				byte[] clientGreet = Text.Encoding.ASCII.GetBytes("hello, synctracker!");
 				string serverGreet = "hello, demo!";
 				byte[] bytesReceived = new Byte[serverGreet.Length];
 
 				if (!socket.Send(clientGreet, clientGreet.Length) ||
 				    !socket.Receive(bytesReceived, bytesReceived.Length) ||
-				    !Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
+				    !Text.Encoding.ASCII.GetString(bytesReceived).Equals(serverGreet))
 				{
 					throw new Exception("handshake-error!");
 				}
@@ -152,7 +152,7 @@ namespace Rocket
 			var track = new Track(name);
 			tracks.Add(track);
 
-			var nameUTF8 = Encoding.UTF8.GetBytes(name);
+			var nameUTF8 = Text.Encoding.UTF8.GetBytes(name);
 			var output = new byte[5 + nameUTF8.Length];
 
 			// "get track"
