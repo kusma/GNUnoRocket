@@ -83,7 +83,55 @@ namespace Text
 
 		override public string GetString(byte[] bytes)
 		{
-			throw new Uno.Exception("not implemented");
+			var ret = "";
+			for (int i = 0; i < bytes.Length; ++i) {
+				int ch = bytes[i];
+
+				if (ch < 128) {
+					// common case, ASCII character
+					ret += (char)ch;
+					continue;
+				}
+
+				int trailingBytes = 0;
+				if ((ch & 0x70) == 0xc0) {
+					trailingBytes = 1;
+					ch &= ~0xc0;
+				} else if ((ch & 0xf0) == 0xe0) {
+					trailingBytes = 2;
+					ch &= ~0xe0;
+				} else if ((ch & 0xf8) == 0xf0) {
+					trailingBytes = 3;
+					ch &= ~0xf0;
+				} else {
+					// encoding outside unicode
+					ret += (char)0xfffd;
+					continue;
+				}
+
+				if (i + trailingBytes >= bytes.Length) {
+					// not enough data
+					ret += (char)0xfffd;
+					return ret;
+				}
+
+				// decode trailing bytes
+				for (int j = 0; j < trailingBytes; ++j) {
+					byte ch2 = bytes[++i];
+					ch = (ch << 6) | (ch2 & 0x7f);
+				}
+
+				if (ch < 0x10000) {
+					// output single UTF-16 code-point
+					ret += 'æ';
+				} else {
+					// output surrogate pair
+					ch -= 0x10000;
+					ret += (char)(0xd800 + (ch >> 10));
+					ret += (char)(0xdc00 + (ch & 0x3ff));
+				}
+			}
+			return ret;
 		}
 	}
 }
