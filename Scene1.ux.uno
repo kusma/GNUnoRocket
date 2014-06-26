@@ -4,6 +4,7 @@ using Uno.Collections;
 using Uno.Scenes;
 using Uno.UI;
 using Uno.Diagnostics;
+using Experimental.Audio;
 
 using Rocket;
 
@@ -14,6 +15,7 @@ public partial class Scene1
 		device = new Rocket.ClientDevice();
 		device.SetRowEvent += OnSetRow;
 		device.TogglePauseEvent += OnTogglePause;
+		device.IsPlayingEvent += OnIsPlaying;
 
 		try
 		{
@@ -28,36 +30,63 @@ public partial class Scene1
 			throw e;
 		}
 
+		try
+		{
+			player = new Player();
+			sound = player.CreateSound(import BundleFile("lug00ber-carl_breaks.mp3"));
+		}
+		catch (Exception e)
+		{
+			Uno.Diagnostics.Debug.Log("failed to load music stuff: " + e.Message);
+			throw e;
+		}
+
+
         InitializeUX();
+
+		channel = player.PlaySound(sound, false);
     }
 
 	protected override void OnUpdate()
 	{
 		base.OnUpdate();
 
-		float time = row;
+		float row = (float)(channel.Position * row_rate);
 
 		if (device != null)
 			device.Update((int)Math.Floor(row));
 
-		Transform3.Position = float3(testTrackX.GetValue(time),
-		                             testTrackY.GetValue(time),
-		                             testTrackZ.GetValue(time));
+		Transform3.Position = float3(testTrackX.GetValue(row),
+		                             testTrackY.GetValue(row),
+		                             testTrackZ.GetValue(row));
 	}
 
 	public void OnSetRow(object sender, int row)
 	{
-		this.row = row;
+		channel.Position = row / row_rate;
 	}
 
 	public void OnTogglePause(object sender, bool pause)
 	{
-		Uno.Diagnostics.Debug.Log("set-pause: " + pause);
+		if (pause)
+			channel.Pause();
+		else
+			channel.Play();
 	}
 
-	Rocket.ClientDevice device = null;
-	int row = 0;
-	Rocket.Track testTrackX = null;
-	Rocket.Track testTrackY = null;
-	Rocket.Track testTrackZ = null;
+	bool OnIsPlaying(object sender)
+	{
+		return channel.IsPlaying;
+	}
+
+	Rocket.ClientDevice device;
+	Rocket.Track testTrackX, testTrackY, testTrackZ;
+
+	const double bpm = 105.0;
+	const int rpb = 8;
+	const double row_rate = (bpm / 60.0) * rpb;
+
+	Player player;
+	Sound sound;
+	Channel channel;
 }

@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <Project>
   <References>
+    <PackageReference Name="Experimental.Audio" Version="0.1.0.0" />
     <PackageReference Name="Outracks.WowFactory" />
     <PackageReference Name="Uno.Content.Utilities" />
     <PackageReference Name="Uno.Designer" />
