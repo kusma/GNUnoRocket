@@ -108,8 +108,27 @@ namespace Rocket
 		public extern bool Receive(byte[] data, int size);
 	}
 
+	public class Device
+	{
+		public virtual Track GetTrack(string name)
+		{
+			foreach (Track t in tracks) {
+				if (t.name.Equals(name)) {
+					return t;
+				}
+			}
+
+			var track = new Track(name);
+			tracks.Add(track);
+
+			return track;
+		}
+
+		public List<Track> tracks = new List<Track>();
+	}
+
 	[ExportCondition("CIL")]
-	public class ClientDevice
+	public class ClientDevice : Device
 	{
 		public void Connect(string host, int port)
 		{
@@ -138,19 +157,12 @@ namespace Rocket
 			}
 		}
 
-		public Track GetTrack(string name)
+		public override Track GetTrack(string name)
 		{
 			if (!socket.IsConnected())
 				throw new Exception("not connected!");
 
-			foreach (Track t in tracks) {
-				if (t.name.Equals(name)) {
-					return t;
-				}
-			}
-
-			var track = new Track(name);
-			tracks.Add(track);
+			var track = base.GetTrack(name);
 
 			var nameUTF8 = Text.Encoding.UTF8.GetBytes(name);
 			var output = new byte[5 + nameUTF8.Length];
@@ -310,7 +322,6 @@ namespace Rocket
 		}
 
 		Socket socket = new Socket();
-		List<Track> tracks = new List<Track>();
 
 		public delegate void SetRowEventHandler(object sender, int row);
 		public event SetRowEventHandler SetRowEvent;
