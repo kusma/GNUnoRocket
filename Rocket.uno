@@ -37,7 +37,7 @@ namespace Rocket
 			if (idx >= keyFrames.Count - 1)
 				return keyFrames[keyFrames.Count - 1].val;
 
-			float t = (row - keyFrames[idx].row) / (float)(keyFrames[idx + 1].row - keyFrames[idx].row);
+			float t = (time - keyFrames[idx].row) / (float)(keyFrames[idx + 1].row - keyFrames[idx].row);
 
 			switch (keyFrames[idx].interpolation) {
 			case 0: t = 0; break;
