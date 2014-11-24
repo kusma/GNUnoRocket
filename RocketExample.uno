@@ -10,7 +10,7 @@ namespace RocketExample
 {
     class App : Uno.Application
     {
-		Rocket.ClientDevice device;
+		Rocket.Device device;
 		const double bpm = 105.0;
 		const int rpb = 8;
 		const double row_rate = (bpm / 60.0) * rpb;
@@ -32,23 +32,29 @@ namespace RocketExample
 
 		public App()
 		{
-			device = new Rocket.ClientDevice();
-			device.SetRowEvent += OnSetRow;
-			device.TogglePauseEvent += OnTogglePause;
-			device.IsPlayingEvent += OnIsPlaying;
+			if (defined(CIL)) {
+				var temp = new Rocket.ClientDevice();
+				temp.SetRowEvent += OnSetRow;
+				temp.TogglePauseEvent += OnTogglePause;
+				temp.IsPlayingEvent += OnIsPlaying;
 
-			try
-			{
-				device.Connect("localhost", 1338);
-				testTrackX = device.GetTrack("testTrackX");
-				testTrackY = device.GetTrack("testTrackY");
-				testTrackZ = device.GetTrack("testTrackZ");
-			}
-			catch (Exception e)
-			{
-				Uno.Diagnostics.Debug.Log("failed to connect to editor: " + e.Message);
-				throw e;
-			}
+				try
+				{
+					temp.Connect("localhost", 1338);
+				}
+				catch (Exception e)
+				{
+					Uno.Diagnostics.Debug.Log("failed to connect to editor: " + e.Message);
+					throw e;
+				}
+
+				device = temp;
+			} else
+				device = new Rocket.Device();
+
+			testTrackX = device.GetTrack("testTrackX");
+			testTrackY = device.GetTrack("testTrackY");
+			testTrackZ = device.GetTrack("testTrackZ");
 
 			try
 			{
@@ -85,7 +91,11 @@ namespace RocketExample
 		{
 			ClearColor = float4(0, 0, 0, 1);
 
-			device.Update((int)Math.Floor(Row));
+			if (defined(CIL)) {
+				var clientDevice = device as Rocket.ClientDevice;
+				if (clientDevice != null)
+					clientDevice.Update((int)Math.Floor(Row));
+			}
 
 			draw DefaultShading, Cube
 			{
