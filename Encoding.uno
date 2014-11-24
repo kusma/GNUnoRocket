@@ -94,7 +94,7 @@ namespace Text
 				}
 
 				int trailingBytes = 0;
-				if ((ch & 0x70) == 0xc0) {
+				if ((ch & 0xe0) == 0xc0) {
 					trailingBytes = 1;
 					ch &= ~0xc0;
 				} else if ((ch & 0xf0) == 0xe0) {
@@ -123,7 +123,7 @@ namespace Text
 
 				if (ch < 0x10000) {
 					// output single UTF-16 code-point
-					ret += 'æ';
+					ret += (char)ch;
 				} else {
 					// output surrogate pair
 					ch -= 0x10000;
