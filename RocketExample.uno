@@ -15,6 +15,15 @@ namespace RocketExample
 		const int rpb = 8;
 		const double row_rate = (bpm / 60.0) * rpb;
 
+		float Row {
+			get {
+				return (float)(channel.Position * row_rate);
+			}
+			set {
+				channel.Position = value / row_rate;
+			}
+		}
+
 		Rocket.Track testTrackX, testTrackY, testTrackZ;
 
 		Player player;
@@ -56,7 +65,7 @@ namespace RocketExample
 
 		public void OnSetRow(object sender, int row)
 		{
-			channel.Position = row / row_rate;
+			Row = row;
 		}
 
 		public void OnTogglePause(object sender, bool pause)
@@ -76,15 +85,12 @@ namespace RocketExample
 		{
 			ClearColor = float4(0, 0, 0, 1);
 
-			float row = (float)(channel.Position * row_rate);
-
-			if (device != null)
-				device.Update((int)Math.Floor(row));
+			device.Update((int)Math.Floor(Row));
 
 			draw DefaultShading, Cube
 			{
 				Size: 50.0f;
-				CameraPosition: float3(testTrackX.GetValue(row), testTrackY.GetValue(row), testTrackZ.GetValue(row));
+				CameraPosition: float3(testTrackX.GetValue(Row), testTrackY.GetValue(Row), testTrackZ.GetValue(Row));
 				PixelColor: float4(1, 0, 1, 1);
 				LightDirection: float3(-100, 100, 100);
 			};
