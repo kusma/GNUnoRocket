@@ -77,7 +77,6 @@
         <PackageReference Name="Fuse.Entities" Version="0.2.0" />
     </References>
     <Files>
-        <SourceFile Name="Encoding.uno" />
         <SourceFile Name="Rocket.uno" />
         <SourceFile Name="RocketExample.uno" />
         <SourceFile Name="Socket.uno" />
