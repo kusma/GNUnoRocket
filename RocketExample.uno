@@ -8,8 +8,8 @@ using Experimental.Audio;
 
 namespace RocketExample
 {
-    class App : Uno.Application
-    {
+	class App : Uno.Application
+	{
 		Rocket.Device device;
 		const double bpm = 105.0;
 		const int rpb = 8;
@@ -105,5 +105,5 @@ namespace RocketExample
 				LightDirection: float3(-100, 100, 100);
 			};
 		}
-    }
+	}
 }
