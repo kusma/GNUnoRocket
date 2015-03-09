@@ -10,7 +10,7 @@
     <ReferenceUnoCore>True</ReferenceUnoCore>
     <Title>$(Name)</Title>
     <URL></URL>
-    <Version>0.0.0.0</Version>
+    <Version>0.0.0</Version>
     <VersionCount>1</VersionCount>
     <Android>
         <ApplicationLabel>$(Title)</ApplicationLabel>
@@ -72,14 +72,14 @@
         <ShowStatusbar>True</ShowStatusbar>
     </Mobile>
     <References>
-        <PackageReference Name="Experimental.Audio" Version="0.1.0.0" />
-        <PackageReference Name="Fuse.Drawing.Primitives" Version="0.1.0.0" />
-        <PackageReference Name="Fuse.Entities" Version="0.2.0.0" />
+        <PackageReference Name="Experimental.Audio" Version="0.1.0" />
+        <PackageReference Name="Fuse.Drawing.Primitives" Version="0.1.0" />
+        <PackageReference Name="Fuse.Entities" Version="0.2.0" />
     </References>
     <Files>
-        <SourceFile Path="Encoding.uno" />
-        <SourceFile Path="Rocket.uno" />
-        <ExtensionFile Path="Rocket.uxl" />
-        <SourceFile Path="RocketExample.uno" />
+        <SourceFile Name="Encoding.uno" />
+        <SourceFile Name="Rocket.uno" />
+        <ExtensionsFile Name="Rocket.uxl" />
+        <SourceFile Name="RocketExample.uno" />
     </Files>
 </Project>
