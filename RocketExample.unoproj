@@ -79,7 +79,8 @@
     <Files>
         <SourceFile Name="Encoding.uno" />
         <SourceFile Name="Rocket.uno" />
-        <ExtensionsFile Name="Rocket.uxl" />
         <SourceFile Name="RocketExample.uno" />
+        <SourceFile Name="Socket.uno" />
+        <ExtensionsFile Name="Socket.cil.uxl" />
     </Files>
 </Project>
