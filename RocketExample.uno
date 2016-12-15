@@ -11,7 +11,8 @@ namespace RocketExample
 {
 	class App : Uno.Application
 	{
-		Rocket.Device device;
+		extern(SYNC_PLAYER) Rocket.Device device;
+		extern(!SYNC_PLAYER) Rocket.ClientDevice device;
 		const double bpm = 105.0;
 		const int rpb = 8;
 		const double row_rate = (bpm / 60.0) * rpb;
@@ -33,23 +34,22 @@ namespace RocketExample
 
 		public App()
 		{
-			if (defined(CIL)) {
-				var temp = new Rocket.ClientDevice();
-				temp.SetRowEvent += OnSetRow;
-				temp.TogglePauseEvent += OnTogglePause;
-				temp.IsPlayingEvent += OnIsPlaying;
+			if defined(!SYNC_PLAYER)
+			{
+				device = new Rocket.ClientDevice();
+				device.SetRowEvent += OnSetRow;
+				device.TogglePauseEvent += OnTogglePause;
+				device.IsPlayingEvent += OnIsPlaying;
 
 				try
 				{
-					temp.Connect("localhost", 1338);
+					device.Connect("localhost", 1338);
 				}
 				catch (Exception e)
 				{
 					Uno.Diagnostics.Debug.Log("failed to connect to editor: " + e.Message);
 					throw e;
 				}
-
-				device = temp;
 			} else
 				device = new Rocket.Device();
 
@@ -92,10 +92,10 @@ namespace RocketExample
 		{
 			ClearColor = float4(0, 0, 0, 1);
 
-			if (defined(CIL)) {
-				var clientDevice = device as Rocket.ClientDevice;
-				if (clientDevice != null)
-					clientDevice.Update((int)Math.Floor(Row));
+			if defined(!SYNC_PLAYER)
+			{
+				if (device != null)
+					device.Update((int)Math.Floor(Row));
 			}
 
 			draw DefaultShading, Cube

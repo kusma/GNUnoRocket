@@ -1,6 +1,7 @@
 {
 	"RootNamespace":"",
 	"Packages": [
+		"Uno.Net.Sockets",
 		"Fuse",
 		"FuseJS",
 		"Fuse.Entities",

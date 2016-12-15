@@ -1,3 +1,0 @@
-<Extensions Backend="CIL">
-	<Element AssemblyReference="SocketWrapper.dll" />
-</Extensions>

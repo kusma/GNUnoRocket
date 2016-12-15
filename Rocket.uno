@@ -1,9 +1,7 @@
 using Uno;
 using Uno.Collections;
-using Uno.Graphics;
-using Uno.Content;
-using Uno.Content.Models;
-using Uno.Compiler.ExportTargetInterop;
+using Uno.Net;
+using Uno.Net.Sockets;
 
 namespace Rocket
 {
@@ -114,12 +112,16 @@ namespace Rocket
 		public List<Track> tracks = new List<Track>();
 	}
 
-	[ExportCondition("CIL")]
-	public class ClientDevice : Device
+	public extern(!SYNC_PLAYER) class ClientDevice : Device
 	{
 		public void Connect(string host, int port)
 		{
-			socket.Connect(host, port);
+			var ipAddresses = Dns.GetHostAddresses(host);
+			if (ipAddresses.Length < 1)
+				throw new Exception("could not resolve host");
+
+			socket = new Socket(ipAddresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			socket.Connect(new IPEndPoint(ipAddresses[0], 1338));
 
 			try
 			{
@@ -127,8 +129,8 @@ namespace Rocket
 				string serverGreet = "hello, demo!";
 				byte[] bytesReceived = new Byte[serverGreet.Length];
 
-				if (!socket.Send(clientGreet, clientGreet.Length) ||
-				    !socket.Receive(bytesReceived, bytesReceived.Length) ||
+				if (socket.Send(clientGreet) != clientGreet.Length ||
+				    socket.Receive(bytesReceived) != bytesReceived.Length ||
 				    !Uno.Text.Utf8.GetString(bytesReceived).Equals(serverGreet))
 				{
 					throw new Exception("handshake-error!");
@@ -139,14 +141,14 @@ namespace Rocket
 			}
 			catch (Exception e)
 			{
-				socket.Disconnect();
+				socket.Close();
 				throw e;
 			}
 		}
 
 		public override Track GetTrack(string name)
 		{
-			if (!socket.IsConnected())
+			if (!socket.Connected)
 				throw new Exception("not connected!");
 
 			var track = base.GetTrack(name);
@@ -168,8 +170,8 @@ namespace Rocket
 			}
 
 			// disconnect on error
-			if (!socket.Send(output, output.Length))
-				socket.Disconnect();
+			if (socket.Send(output) != output.Length)
+				socket.Close();
 
 			return track;
 		}
@@ -178,15 +180,15 @@ namespace Rocket
 		{
 			byte[] payload = new byte[4];
 
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 			// YUCK! stitch together FP32!
 			int significand = ((payload[3] | (payload[2] << 8) | (payload[1] << 16)) & ((1 << 23) - 1));
@@ -197,7 +199,7 @@ namespace Rocket
 			if ((payload[0] & 0x80) != 0)
 				val = - val;
 
-			if (!socket.Receive(payload, 1))
+			if (socket.Receive(payload, 0, 1, SocketFlags.None) != 1)
 				return false;
 			int interpolation = payload[0];
 
@@ -209,11 +211,11 @@ namespace Rocket
 		{
 			byte[] payload = new byte[4];
 
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 
@@ -224,7 +226,7 @@ namespace Rocket
 		private bool HandleSetRowCmd()
 		{
 			byte[] payload = new byte[4];
-			if (!socket.Receive(payload, payload.Length))
+			if (socket.Receive(payload) != payload.Length)
 				return false;
 
 			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
@@ -236,7 +238,7 @@ namespace Rocket
 		private bool HandlePauseCmd()
 		{
 			byte[] payload = new byte[1];
-			if (!socket.Receive(payload, 1))
+			if (socket.Receive(payload, 0, 1, SocketFlags.None) != 1)
 				return false;
 			bool pause = payload[0] != 0;
 			if (TogglePauseEvent != null)
@@ -252,45 +254,45 @@ namespace Rocket
 
 		public bool Update(int row)
 		{
-			if (!socket.IsConnected())
+			if (!socket.Connected)
 				return false;
 
-			while (socket.PollData()) {
+			while (socket.Poll(0, SelectMode.Read)) {
 				byte[] cmd = new byte[1];
-				if (!socket.Receive(cmd, 1)) {
-					socket.Disconnect();
+				if (socket.Receive(cmd, 0, 1, SocketFlags.None) != 1) {
+					socket.Close();
 					break;
 				}
 
 				switch (cmd[0]) {
 				case 0:
 					if (!HandleSetKeyCmd())
-						socket.Disconnect();
+						socket.Close();
 					break;
 
 				case 1:
 					if (!HandleDelKeyCmd())
-						socket.Disconnect();
+						socket.Close();
 					break;
 
 				case 3:
 					if (!HandleSetRowCmd())
-						socket.Disconnect();
+						socket.Close();
 					break;
 
 				case 4:
 					if (!HandlePauseCmd())
-						socket.Disconnect();
+						socket.Close();
 					break;
 
 				case 5:
 					if (!HandleSaveTracksCmd())
-						socket.Disconnect();
+						socket.Close();
 					break;
 				}
 			}
 
-			if (socket.IsConnected() && IsPlayingEvent != null && IsPlayingEvent(this)) {
+			if (socket.Connected && IsPlayingEvent != null && IsPlayingEvent(this)) {
 				byte[] output = new byte[5];
 
 				output[0] = 3; // set row
@@ -301,14 +303,14 @@ namespace Rocket
 				output[4] = (byte)(row & 0xff);
 
 				// disconnect on error
-				if (!socket.Send(output, output.Length))
-					socket.Disconnect();
+				if (socket.Send(output) != output.Length)
+					socket.Close();
 			}
 
-			return socket.IsConnected();
+			return socket.Connected;
 		}
 
-		Socket socket = new Socket();
+		Socket socket;
 
 		public delegate void SetRowEventHandler(object sender, int row);
 		public event SetRowEventHandler SetRowEvent;
