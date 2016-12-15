@@ -1,4 +1,5 @@
 using Uno;
+using Uno.IO;
 using Uno.Collections;
 using Uno.Graphics;
 using Fuse.Entities;
