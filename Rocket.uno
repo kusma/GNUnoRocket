@@ -161,7 +161,7 @@ namespace Rocket
 			catch (Exception e)
 			{
 				_socket.Close();
-				throw e;
+				throw;
 			}
 		}
 
