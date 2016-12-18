@@ -1,5 +1,6 @@
 using Uno;
 using Uno.Collections;
+using Uno.IO;
 using Uno.Net;
 using Uno.Net.Sockets;
 
@@ -122,19 +123,18 @@ namespace Rocket
 
 			socket = new Socket(ipAddresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 			socket.Connect(new IPEndPoint(ipAddresses[0], 1338));
+			var networkStream = new NetworkStream(socket);
+			_binaryReader = new BinaryReader(networkStream);
+			_binaryWriter = new BinaryWriter(networkStream);
 
 			try
 			{
-				byte[] clientGreet = Uno.Text.Utf8.GetBytes("hello, synctracker!");
-				string serverGreet = "hello, demo!";
-				byte[] bytesReceived = new Byte[serverGreet.Length];
+				_binaryWriter.Write(Uno.Text.Utf8.GetBytes("hello, synctracker!"));
 
-				if (socket.Send(clientGreet) != clientGreet.Length ||
-				    socket.Receive(bytesReceived) != bytesReceived.Length ||
-				    !Uno.Text.Utf8.GetString(bytesReceived).Equals(serverGreet))
-				{
+				var serverGreet = "hello, demo!";
+				var bytesReceived = _binaryReader.ReadBytes(Uno.Text.Utf8.GetBytes(serverGreet).Length);
+				if (!Uno.Text.Utf8.GetString(bytesReceived).Equals(serverGreet))
 					throw new Exception("handshake-error!");
-				}
 
 				foreach (Track track in tracks)
 					GetTrack(track.name);
@@ -151,105 +151,63 @@ namespace Rocket
 			if (!socket.Connected)
 				throw new Exception("not connected!");
 
-			var track = base.GetTrack(name);
+			// "get track"
+			_binaryWriter.Write((byte)2);
 
 			var nameUTF8 = Uno.Text.Utf8.GetBytes(name);
-			var output = new byte[5 + nameUTF8.Length];
+			_binaryWriter.Write(NetworkHelpers.HostToNetworkOrder(nameUTF8.Length));
+			_binaryWriter.Write(nameUTF8);
 
-			// "get track"
-			output[0] = 2;
-
-			output[1] = (byte)((nameUTF8.Length >> 24) & 0xff);
-			output[2] = (byte)((nameUTF8.Length >> 16) & 0xff);
-			output[3] = (byte)((nameUTF8.Length >> 8) & 0xff);
-			output[4] = (byte)(nameUTF8.Length & 0xff);
-
-			for (int i = 0; i < nameUTF8.Length; ++i) {
-				assert(i < output.Length);
-				output[5 + i] = (byte)nameUTF8[i];
-			}
-
-			// disconnect on error
-			if (socket.Send(output) != output.Length)
-				socket.Close();
-
-			return track;
+			return base.GetTrack(name);
 		}
 
-		private bool HandleSetKeyCmd()
+		private void HandleSetKeyCmd()
 		{
-			byte[] payload = new byte[4];
+			int track = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
+			int row = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
+			int binValue = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
+			int interpolation = _binaryReader.ReadByte();
 
-			if (socket.Receive(payload) != payload.Length)
-				return false;
-			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-			if (socket.Receive(payload) != payload.Length)
-				return false;
-			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-			if (socket.Receive(payload) != payload.Length)
-				return false;
 			// YUCK! stitch together FP32!
-			int significand = ((payload[3] | (payload[2] << 8) | (payload[1] << 16)) & ((1 << 23) - 1));
-			int exponent = (((payload[0] & 0x7f) << 1) | (payload[1] >> 7)) - 127;
+			int significand = binValue & ((1 << 23) - 1);
+
+			int exponent = ((binValue >> 23) & 0xFF) - 127;
 			if (exponent != -127)
 				significand |= 1 << 23;
-			float val = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
-			if ((payload[0] & 0x80) != 0)
-				val = - val;
 
-			if (socket.Receive(payload, 0, 1, SocketFlags.None) != 1)
-				return false;
-			int interpolation = payload[0];
+			float val = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
+			if (binValue < 0)
+				val = -val;
 
 			tracks[track].SetKey(row, val, interpolation);
-			return true;
 		}
 
-		private bool HandleDelKeyCmd()
+		private void HandleDelKeyCmd()
 		{
-			byte[] payload = new byte[4];
-
-			if (socket.Receive(payload) != payload.Length)
-				return false;
-			int track = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
-
-			if (socket.Receive(payload) != payload.Length)
-				return false;
-			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
+			int track = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
+			int row = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
 
 			tracks[track].DelKey(row);
-			return true;
 		}
 
-		private bool HandleSetRowCmd()
+		private void HandleSetRowCmd()
 		{
-			byte[] payload = new byte[4];
-			if (socket.Receive(payload) != payload.Length)
-				return false;
+			int row = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
 
-			int row = payload[3] | (payload[2] << 8) | (payload[1] << 16) | (payload[0] << 24);
 			if (SetRowEvent != null)
 				SetRowEvent(this, row);
-			return true;
 		}
 
-		private bool HandlePauseCmd()
+		private void HandlePauseCmd()
 		{
-			byte[] payload = new byte[1];
-			if (socket.Receive(payload, 0, 1, SocketFlags.None) != 1)
-				return false;
-			bool pause = payload[0] != 0;
+			bool pause = _binaryReader.ReadByte() != 0;
 			if (TogglePauseEvent != null)
 				TogglePauseEvent(this, pause);
-			return true;
 		}
 
-		private bool HandleSaveTracksCmd()
+		private void HandleSaveTracksCmd()
 		{
 			// TODO: implement
-			return true;
 		}
 
 		public bool Update(int row)
@@ -257,60 +215,44 @@ namespace Rocket
 			if (!socket.Connected)
 				return false;
 
-			while (socket.Poll(0, SelectMode.Read)) {
-				byte[] cmd = new byte[1];
-				if (socket.Receive(cmd, 0, 1, SocketFlags.None) != 1) {
-					socket.Close();
-					break;
-				}
+			while (socket.Poll(0, SelectMode.Read))
+			{
+				switch (_binaryReader.ReadByte())
+				{
+					case 0:
+						HandleSetKeyCmd();
+						break;
 
-				switch (cmd[0]) {
-				case 0:
-					if (!HandleSetKeyCmd())
-						socket.Close();
-					break;
+					case 1:
+						HandleDelKeyCmd();
+						break;
 
-				case 1:
-					if (!HandleDelKeyCmd())
-						socket.Close();
-					break;
+					case 3:
+						HandleSetRowCmd();
+						break;
 
-				case 3:
-					if (!HandleSetRowCmd())
-						socket.Close();
-					break;
+					case 4:
+						HandlePauseCmd();
+						break;
 
-				case 4:
-					if (!HandlePauseCmd())
-						socket.Close();
-					break;
-
-				case 5:
-					if (!HandleSaveTracksCmd())
-						socket.Close();
-					break;
+					case 5:
+						HandleSaveTracksCmd();
+						break;
 				}
 			}
 
-			if (socket.Connected && IsPlayingEvent != null && IsPlayingEvent(this)) {
-				byte[] output = new byte[5];
-
-				output[0] = 3; // set row
-
-				output[1] = (byte)((row >> 24) & 0xff);
-				output[2] = (byte)((row >> 16) & 0xff);
-				output[3] = (byte)((row >> 8) & 0xff);
-				output[4] = (byte)(row & 0xff);
-
-				// disconnect on error
-				if (socket.Send(output) != output.Length)
-					socket.Close();
+			if (socket.Connected && IsPlayingEvent != null && IsPlayingEvent(this))
+			{
+				_binaryWriter.Write((byte)3);
+				_binaryWriter.Write(NetworkHelpers.HostToNetworkOrder(row));
 			}
 
 			return socket.Connected;
 		}
 
 		Socket socket;
+		BinaryReader _binaryReader;
+		BinaryWriter _binaryWriter;
 
 		public delegate void SetRowEventHandler(object sender, int row);
 		public event SetRowEventHandler SetRowEvent;
