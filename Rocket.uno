@@ -29,7 +29,7 @@ namespace Rocket
 	{
 		public Track(string name)
 		{
-			this.name = name;
+			Name = name;
 		}
 
 		private class KeyFrame
@@ -41,7 +41,7 @@ namespace Rocket
 
 		public float GetValue(float time)
 		{
-			if (keyFrames.Count == 0)
+			if (_keyFrames.Count == 0)
 				return 0.0f;
 
 			int row = (int)Math.Floor(time);
@@ -51,33 +51,33 @@ namespace Rocket
 				idx = -idx - 2;
 
 			if (idx < 0)
-				return keyFrames[0].val;
-			if (idx >= keyFrames.Count - 1)
-				return keyFrames[keyFrames.Count - 1].val;
+				return _keyFrames[0].val;
+			if (idx >= _keyFrames.Count - 1)
+				return _keyFrames[_keyFrames.Count - 1].val;
 
-			float t = (time - keyFrames[idx].row) / (float)(keyFrames[idx + 1].row - keyFrames[idx].row);
+			float t = (time - _keyFrames[idx].row) / (float)(_keyFrames[idx + 1].row - _keyFrames[idx].row);
 
-			switch (keyFrames[idx].interpolation) {
+			switch (_keyFrames[idx].interpolation) {
 			case 0: t = 0; break;
 			case 1: break;
 			case 2: t = t * t * (3 - 2 * t); break;
 			case 3: t *= t; break;
 			}
 
-			return keyFrames[idx].val + (keyFrames[idx + 1].val - keyFrames[idx].val) * t;
+			return _keyFrames[idx].val + (_keyFrames[idx + 1].val - _keyFrames[idx].val) * t;
 		}
 
 		int FindKey(int row)
 		{
-			int lo = 0, hi = keyFrames.Count;
+			int lo = 0, hi = _keyFrames.Count;
 
 			while (lo < hi) {
 				int mi = (lo + hi) / 2;
 				assert(mi != hi);
 
-				if (keyFrames[mi].row < row)
+				if (_keyFrames[mi].row < row)
 					lo = mi + 1;
-				else if (keyFrames[mi].row > row)
+				else if (_keyFrames[mi].row > row)
 					hi = mi;
 				else
 					return mi; /* exact hit */
@@ -97,20 +97,20 @@ namespace Rocket
 			key.interpolation = interpolation;
 			int idx = FindKey(row);
 			if (idx < 0)
-				keyFrames.Insert(-idx - 1, key);
+				_keyFrames.Insert(-idx - 1, key);
 			else
-				keyFrames[idx] = key;
+				_keyFrames[idx] = key;
 		}
 
 		public void DelKey(int row)
 		{
 			int idx = FindKey(row);
 			assert(idx >= 0);
-			keyFrames.RemoveAt(idx);
+			_keyFrames.RemoveAt(idx);
 		}
 
-		public string name;
-		List<KeyFrame> keyFrames = new List<KeyFrame>();
+		public readonly string Name;
+		List<KeyFrame> _keyFrames = new List<KeyFrame>();
 	}
 
 	public class Device
@@ -118,7 +118,7 @@ namespace Rocket
 		public virtual Track GetTrack(string name)
 		{
 			foreach (Track t in tracks) {
-				if (t.name.Equals(name)) {
+				if (t.Name.Equals(name)) {
 					return t;
 				}
 			}
@@ -156,7 +156,7 @@ namespace Rocket
 					throw new Exception("handshake-error!");
 
 				foreach (Track track in tracks)
-					GetTrack(track.name);
+					GetTrack(track.Name);
 			}
 			catch (Exception e)
 			{
