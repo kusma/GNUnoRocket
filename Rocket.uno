@@ -140,9 +140,9 @@ namespace Rocket
 			if (ipAddresses.Length < 1)
 				throw new Exception("could not resolve host");
 
-			socket = new Socket(ipAddresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			socket.Connect(new IPEndPoint(ipAddresses[0], 1338));
-			var networkStream = new NetworkStream(socket);
+			_socket = new Socket(ipAddresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+			_socket.Connect(new IPEndPoint(ipAddresses[0], 1338));
+			var networkStream = new NetworkStream(_socket);
 			_binaryReader = new BinaryReader(networkStream);
 			_binaryWriter = new BinaryWriter(networkStream);
 
@@ -160,14 +160,14 @@ namespace Rocket
 			}
 			catch (Exception e)
 			{
-				socket.Close();
+				_socket.Close();
 				throw e;
 			}
 		}
 
 		public override Track GetTrack(string name)
 		{
-			if (!socket.Connected)
+			if (!_socket.Connected)
 				throw new Exception("not connected!");
 
 			// "get track"
@@ -220,10 +220,10 @@ namespace Rocket
 
 		public bool Update(int row)
 		{
-			if (!socket.Connected)
+			if (!_socket.Connected)
 				return false;
 
-			while (socket.Poll(0, SelectMode.Read))
+			while (_socket.Poll(0, SelectMode.Read))
 			{
 				switch (_binaryReader.ReadByte())
 				{
@@ -249,16 +249,16 @@ namespace Rocket
 				}
 			}
 
-			if (socket.Connected && IsPlayingEvent != null && IsPlayingEvent(this))
+			if (_socket.Connected && IsPlayingEvent != null && IsPlayingEvent(this))
 			{
 				_binaryWriter.Write((byte)3);
 				_binaryWriter.Write(NetworkHelpers.HostToNetworkOrder(row));
 			}
 
-			return socket.Connected;
+			return _socket.Connected;
 		}
 
-		Socket socket;
+		Socket _socket;
 		BinaryReader _binaryReader;
 		BinaryWriter _binaryWriter;
 
