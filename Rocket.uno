@@ -6,6 +6,25 @@ using Uno.Net.Sockets;
 
 namespace Rocket
 {
+	static class Helpers
+	{
+		public static float GetFloatValue(int binValue)
+		{
+			// YUCK! stitch together FP32!
+			int significand = binValue & ((1 << 23) - 1);
+
+			int exponent = ((binValue >> 23) & 0xFF) - 127;
+			if (exponent != -127)
+				significand |= 1 << 23;
+
+			float ret = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
+			if (binValue < 0)
+				ret = -ret;
+
+			return ret;
+		}
+	}
+
 	public class Track
 	{
 		public Track(string name)
@@ -165,19 +184,8 @@ namespace Rocket
 		{
 			int track = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
 			int row = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
-			int binValue = NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt());
+			float val = Helpers.GetFloatValue(NetworkHelpers.NetworkToHostOrder(_binaryReader.ReadInt()));
 			int interpolation = _binaryReader.ReadByte();
-
-			// YUCK! stitch together FP32!
-			int significand = binValue & ((1 << 23) - 1);
-
-			int exponent = ((binValue >> 23) & 0xFF) - 127;
-			if (exponent != -127)
-				significand |= 1 << 23;
-
-			float val = (significand / (float)(1 << 23)) * Math.Exp2(exponent);
-			if (binValue < 0)
-				val = -val;
 
 			tracks[track].SetKey(row, val, interpolation);
 		}
