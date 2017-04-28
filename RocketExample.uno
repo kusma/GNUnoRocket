@@ -2,8 +2,6 @@ using Uno;
 using Uno.IO;
 using Uno.Collections;
 using Uno.Graphics;
-using Fuse.Entities;
-using Fuse.Entities.Primitives;
 using Fuse.Drawing.Primitives;
 using Experimental.Audio;
 
@@ -90,21 +88,13 @@ namespace RocketExample
 
 		public override void Draw()
 		{
-			ClearColor = float4(0, 0, 0, 1);
-
 			if defined(!SYNC_PLAYER)
 			{
 				if (device != null)
 					device.Update((int)Math.Floor(Row));
 			}
 
-			draw DefaultShading, Cube
-			{
-				Size: 50.0f;
-				CameraPosition: float3(testTrackX.GetValue(Row), testTrackY.GetValue(Row), testTrackZ.GetValue(Row));
-				PixelColor: float4(1, 0, 1, 1);
-				LightDirection: float3(-100, 100, 100);
-			};
+			debug_log(string.Format("testTrack: <{0}, {1}, {2}>", testTrackX.GetValue(Row), testTrackY.GetValue(Row), testTrackZ.GetValue(Row)));
 		}
 	}
 }

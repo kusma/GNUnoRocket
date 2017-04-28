@@ -4,7 +4,6 @@
 		"Uno.Net.Sockets",
 		"Fuse",
 		"FuseJS",
-		"Fuse.Entities",
 		"Experimental.Audio"
 	],
 	"Includes": [
