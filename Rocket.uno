@@ -134,35 +134,63 @@ namespace Rocket
 
 	public extern(!SYNC_PLAYER) class ClientDevice : Device
 	{
-		public void Connect(string host, int port)
+		Socket ServerConnect(string host, int port)
 		{
 			var ipAddresses = Dns.GetHostAddresses(host);
 			if (ipAddresses.Length < 1)
 				throw new Exception("could not resolve host");
 
-			_socket = new Socket(ipAddresses[0].AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-			_socket.Connect(new IPEndPoint(ipAddresses[0], 1338));
-			var networkStream = new NetworkStream(_socket);
-			_binaryReader = new BinaryReader(networkStream);
-			_binaryWriter = new BinaryWriter(networkStream);
-
-			try
+			var exceptions = new List<Exception>();
+			foreach (var ipAddress in ipAddresses)
 			{
-				_binaryWriter.Write(Uno.Text.Utf8.GetBytes("hello, synctracker!"));
+				var socket = new Socket(ipAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+				try
+				{
+					socket.Connect(new IPEndPoint(ipAddress, port));
 
-				var serverGreet = "hello, demo!";
-				var bytesReceived = _binaryReader.ReadBytes(Uno.Text.Utf8.GetBytes(serverGreet).Length);
-				if (!Uno.Text.Utf8.GetString(bytesReceived).Equals(serverGreet))
-					throw new Exception("handshake-error!");
+					var networkStream = new NetworkStream(socket);
+					_binaryReader = new BinaryReader(networkStream);
+					_binaryWriter = new BinaryWriter(networkStream);
 
-				foreach (Track track in tracks)
-					GetTrack(track.Name);
+					try
+					{
+						_binaryWriter.Write(Uno.Text.Utf8.GetBytes("hello, synctracker!"));
+
+						var serverGreet = "hello, demo!";
+						var bytesReceived = _binaryReader.ReadBytes(Uno.Text.Utf8.GetBytes(serverGreet).Length);
+						if (!Uno.Text.Utf8.GetString(bytesReceived).Equals(serverGreet))
+							throw new Exception("handshake-error!");
+
+						return socket;
+					}
+					catch (Exception e)
+					{
+						_binaryReader.Dispose();
+						_binaryWriter.Dispose();
+						throw;
+					}
+
+				}
+				catch (Exception e)
+				{
+					socket.Close();
+					Uno.Diagnostics.Debug.Log(string.Format("failed to connect to host {0}: {1}", ipAddress, e.Message));
+					exceptions.Add(e);
+					continue;
+				}
+
+				break;
 			}
-			catch (Exception e)
-			{
-				_socket.Close();
-				throw;
-			}
+
+			throw new AggregateException("Failed to connect!", exceptions.ToArray());
+		}
+
+		public void Connect(string host, int port)
+		{
+			_socket = ServerConnect(host, port);
+
+			foreach (Track track in tracks)
+				GetTrack(track.Name);
 		}
 
 		public override Track GetTrack(string name)
